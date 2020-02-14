@@ -26,6 +26,7 @@ message = {"Available demos:",...
    sprintf('\t[1] 2D scara robot, time optimal under obstacle and kinematic constraints'),...
    sprintf('\t[2] 2D scara robot, time optimal under obstacle and dynamic constraints'),...
    sprintf('\t[3] 2D wafer handling robot, time optimal under obstacle and kinematic constraints')...
+   sprintf('\t[4] 6-axis robot, time optimal under dynamic constraints')...
    sprintf('Please choose one:  '),...
    };
 for i = 1:length(message)
@@ -69,6 +70,16 @@ switch choice
         addpath('Examples/test-Wafer-3axis');
         run('demo_wafer.m');
         rmpath('Examples/test-Wafer-3axis');
+    case 4
+        disp("Your choice is: "+string(message{choice+2}(2:end)));
+        disp("  ");
+        tmp=input('Press any key to start ');
+        disp("  ");
+        addpath(genpath('Examples/FromARTE'));
+        addpath('Examples/M20-dyn-simple');
+        run('demo_M20dyn.m');
+        rmpath('Examples/M20-dyn-simple');
+        rmpath(genpath('Examples/FromARTE'));
     otherwise
         disp("Invalid choice. Please try again.");
 end

@@ -1,0 +1,19 @@
+function [pos,vel,acc] = motiongen(pnt0,pnt1,dt,tLen)
+    %pnt0 = 0.6;% start point
+    %pnt1 = 0.9;% end point
+    %maxAcc = 5;% maximum acc
+    %dt = 0.001;% sample time
+    %tLen=3*sqrt(1/(maxAcc/norm(pnt0-pnt1))); % relation to maxAcc
+    %time0=0:dt:tLen*0.8;
+    time0=0:dt:tLen;
+    [Rs, v_Ct, a_Ct, ~] = SPathGenOrder3(time0(end), dt, 0);% generate normalized trajectory
+    m = length([0:dt:tLen])-length(time0);
+    Rs = [Rs(:);ones(m,1)];
+    v_Ct = [v_Ct(:);zeros(m,1)];
+    a_Ct = [a_Ct(:);zeros(m,1)];
+    scale = (pnt1-pnt0);% scale of actual trajectory
+    %time = 0:dt:(length(Rs)-1)*dt;% total time
+    pos = Rs*scale+pnt0;% get actual pos
+    vel = v_Ct*scale;% get actual vel
+    acc = a_Ct*scale;% get actual acc
+end
