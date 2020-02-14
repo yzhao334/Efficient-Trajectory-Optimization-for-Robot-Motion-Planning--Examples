@@ -20,7 +20,7 @@ Run MainDemo.m and follow instructions.
 
 * [3] 2D wafer handling robot, obscatle avoidance with kinematics constraints, description refer to "Trajectory planning for robot manipulators considering kinematic constraints using probabilistic roadmap approach." Xiaowen Yu etc., 2017, or "Intelligent Control and Planning for Industrial Robots." Yu Zhao, 2018.
 
-* [4] 6-axis robot case, using FANUC M20iA model from [ARTE](http://arvc.umh.es/arte/index_en.html), implemented visualization, forward and inverse kinematics, inverse dynamics (recursive Newton Euler method, or rNE), and forward dynamics (articulated body algorithm, or ABA) for planning calculation. Examples coming soon...
+* 6-axis robot case, using FANUC M20iA model from [ARTE](http://arvc.umh.es/arte/index_en.html), implemented visualization, forward and inverse kinematics, inverse dynamics (recursive Newton Euler method, or rNE), and forward dynamics (articulated body algorithm, or ABA) for planning calculation. Examples coming soon...
 
 Besides, a quadrotor demo can be found in [another git repo](https://github.com/yzhao334/Flipping-Test.git)
 
