@@ -1,0 +1,7 @@
+This folder contains FANUC M20 robot model from ARTE, a robotics toolbox for education, http://arvc.umh.es/arte/index_en.html#download
+
+under LGPL license
+
+parameters maybe setted only for education purpose demo and not for real robots.
+
+stlread got problem with original files, exported as _exp.stl files using FreeCAD
