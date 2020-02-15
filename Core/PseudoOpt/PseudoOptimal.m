@@ -198,7 +198,9 @@ classdef PseudoOptimal < handle
             Tfinal = xopt(end);
             Tc=chebpts(obj.npts,[0,Tfinal]).';% get time nodes
             
-            Topt = linspace(0,Tfinal,length(time));
+            dt = mean(diff(time)); % assume input time uniformally distributed
+            
+            Topt = linspace(0,Tfinal,ceil(Tfinal/dt)+1);
             Xopt=ChebTest.barycentricInterpolate(Topt(:),Xc,Tc(:),obj.orth.vv(:));
             Uopt=ChebTest.barycentricInterpolate(Topt(:),Uc,Tc(:),obj.orth.vv(:));
         end
@@ -263,7 +265,9 @@ classdef PseudoOptimal < handle
             Tfinal = xopt(end);
             Tc=chebpts(obj.npts,[0,Tfinal]).';% get time nodes
             
-            Topt = linspace(0,Tfinal,length(time));
+            dt = mean(diff(time)); % assume input time uniformally distributed
+            
+            Topt = linspace(0,Tfinal,ceil(Tfinal/dt)+1);
             Xopt=ChebTest.barycentricInterpolate(Topt(:),Xc,Tc(:),obj.orth.vv(:));
             Uopt=ChebTest.barycentricInterpolate(Topt(:),Uc,Tc(:),obj.orth.vv(:));
         end

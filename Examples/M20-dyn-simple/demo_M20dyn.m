@@ -11,89 +11,319 @@
 
 %% set up parameter
 prob.rob = RobViz('M20iA');
-% prob.parts = load('M16CAD','parts');
-% prob.parts = prob.parts.parts;%loadCAD_m16(prob.si);
-% prob.si.DH(:,1) = prob.rob.r.Alpha(:);
-% prob.si.DH(:,2) = prob.rob.r.A(:);
-% prob.si.DH(:,3) = prob.rob.r.D(:);
-% prob.si.DH(:,4) = prob.rob.r.Theta0(:);
-% [prob.bc,prob.br,prob.wall,...
-%     prob.selfmap,prob.wallmap,prob.obs,prob.obsmap]=boundBall();
 %% initialize optimization
 ps=PseudoOptimal;
 ps.npts=12;
 ps.nS=12;
 ps.nU=6;
-maxiter=200;disp=5;
-ps=ps.timeOptimalInit(@(Xc,Uc,D,nS,nU,scale,P)conEq(Xc,Uc,D,nS,nU,scale,P,prob.rob),...
-    @(Xc,Uc,tc,D,nS,nU,ww,scale)costFcn(Xc,Uc,tc,D,nS,nU,ww,scale,prob.rob),...
-    @(Xc,Uc,D,scale)conIneq(Xc,Uc,D,scale),maxiter,disp);
-%% set up and solve optimal control problem
-prob.init = [0 0 0 0 0 0];% joint space initial position
-% prob.target = [pi/5,-pi/4,pi/4,-pi/10,-pi/4,pi/10];% joint space target position
-% prob.target = [pi*2/3,-pi/4,pi/4,-pi/10,-pi/4,pi/10];% joint space target position
-% prob.target = [pi/3,pi/8,-6/9/2*pi,-pi/10,-pi/4,pi/10];% infeasible target if unrelax j3
-% prob.target = [pi/3,-pi/8,-pi/8,pi/10,-pi/10,0];% joint space target position
-% prob.target = [0 0 0 pi/6 0 0];% joint space target position
-prob.target = [pi/3,pi/3,-pi/4,0,-pi/3,0];% joint space target position
-%%
-% R=[0 0 1;0  1 0;-1 0 0];
-R=[1 0 0;0 0 -1; 0 1 0]*rotx(pi/2)*rotz(-pi/6);
-% P=[-0.5;0.8;0.4];
-P=[0.5;0.2;1.3];
-% % P=[-0.5;0.5;0.4];
-% % P=[1;0.8;0.33];
-prob.init=prob.rob.kinv_M20(R,P);
-% % init=prob.rob.rtb.ikine([0 0 1 -0.5;0 1 0 0.95;-1 0 0 0.4;0 0 0 1],[pi*2/3 -pi/6 -pi/6 0 -pi/6 pi/6]);
-% R=[0 1 0;0 0 -1;-1 0 0];
-% % P=[1;0.8;0.33];
-% % P=[1;0;0.33];
-% P=[0.75;0.5;0.33];
-% P=[0.25;0.6;0.85];
-% % P=[0.5;0.6;0.85];
-% % P=[0.7;0.7;0.65];
-R=R*rotz(pi/6);
-P=[1.2;0.5;1.3];
-prob.target=kinv_rob_m16_modeR(R,P,prob.si.DH,prob.rob.rtb.tool);
-
-%%
-clf;
-prob.tf=0.96;%10;
-% prob.time=linspace(0,prob.tf);
-% prob.dt=prob.tf/99;
+maxiter=20000;dispLev=5;
+switch regul
+    case 'y'
+        ps=ps.timeOptimalInit(@(Xc,Uc,D,nS,nU,scale,P)conEq(Xc,Uc,D,nS,nU,scale,P,prob.rob),...
+            @(Xc,Uc,tc,D,nS,nU,ww,scale)costFcn(Xc,Uc,tc,D,nS,nU,ww,scale,prob.rob),...
+            @(Xc,Uc,D,scale)conIneq(Xc,Uc,D,scale),maxiter,dispLev);
+    case 'n'
+        ps=ps.timeOptimalInit(@(Xc,Uc,D,nS,nU,scale,P)conEq(Xc,Uc,D,nS,nU,scale,P,prob.rob),...
+            @(Xc,Uc,tc,D,nS,nU,ww,scale)costFcn_topt(Xc,Uc,tc,D,nS,nU,ww,scale,prob.rob),...
+            @(Xc,Uc,D,scale)conIneq(Xc,Uc,D,scale),maxiter,dispLev);
+    otherwise
+        disp('Wrong option. Please try again');
+        return;
+end
+disp('Initialization finished.');
+disp('  ');
+%% set up series of trials
+% initial setup
+prob.tf=0.96;
 prob.dt=0.01;
+prob.time = 0:prob.dt:prob.tf;
+[prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,zeros(1,6),zeros(1,6),prob.rob);
+velbnd=prob.bnds(:,3);
+trqbnd=prob.bnds(:,4);
+dtrqbnd=prob.bnds(:,5);
+rotx=@(x)[1,0,0;0,cos(x),sin(x);0,-sin(x),cos(x)].';
+rotz=@(x)[cos(x),sin(x),0;-sin(x),cos(x),0;0,0,1].';
+roty=@(x)[cos(x),0,-sin(x);0,1,0;sin(x),0,cos(x)].';
+state_record=[];control_record=[];time_record=[];
+%% task 1
+prob.init = [0 0 0 0 0 0];% joint space initial position
+prob.target = [0,0,-pi/2,0,0,0];% joint space target position
+disp(['Initial pos [',num2str(prob.init),']']);
+disp(['Target pos [',num2str(prob.target),']']);
+tmp=input('Press any key to run ');
+prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
 sAcc=nan(length(prob.time),ps.nS/2);
+prob.u_init=nan(length(prob.time),ps.nU);
 for i=1:ps.nS/2
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
     sAcc(:,i) = acc(:);
 end
-prob.u_init=prob.rob.rtb.rne(ps.sGuess(:,1:6),ps.sGuess(:,7:12),sAcc);
+for j=1:size(sAcc,1)
+    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.target,prob.rob);
 % solve optimal control
 [opt.Xc,opt.Uc,opt.Tc,opt.Xopt,opt.Uopt,opt.Topt] = ...
     ps.timeOptimalOptimize(prob.lb,prob.ub,prob.time,prob.u_init);
-% plot
-% plot_m16_3D_customR( opt.Topt, opt.Xopt(:,1:6), prob.si.DH, prob.rob.rtb.tool, prob.parts, [150,30], 10, 0 , 1 );
-plot_m16_3D_customR( opt.Topt, opt.Xopt(:,1:6), prob.si.DH, prob.rob.rtb.tool, prob.parts, [150,30], 10, 0 , 1, prob );
-
-velbnd=pi/180*[165 165 175 350 340 520].';
-trqbnd=[1396.5,1402.3,382.7,45.2,44.6,32.5].'*0.8;% reduced to 80%
-% dtrqbnd=15*trqbnd;
-dtrqbnd=[4945,7769,1407,33.9,129,39].'; % task specific
-
-accopt=[];
-jerkopt=[];
-dtrq=[];
-for i=1:6
-    accopt(:,i)=gradient(opt.Xopt(:,6+i))./gradient(opt.Topt(:));
-    jerkopt(:,i)=gradient(accopt(:,i))./gradient(opt.Topt(:));
+% animation
+figure(1);clf;
+prob.rob.InitPlot([150,30]);
+for j=1:5:length(opt.Topt)
+    prob.rob.draw(opt.Xopt(j,1:6));
+    pause(0.02);
 end
-trqm=opt.Uopt+accopt*diag(prob.rob.r.Jm.*prob.rob.r.G.^2);
-for i=1:6
-    dtrq(:,i)=gradient(trqm(:,i))./gradient(opt.Topt(:));
+% record data
+state_record = [state_record;opt.Xopt];
+control_record = [control_record;opt.Uopt];
+if isempty(time_record)
+    time_record = [time_record;opt.Topt(:)];
+else
+    time_record = [time_record;opt.Topt(:)+time_record(end)+prob.dt];
 end
+%% task 2
+% pause(1);
+prob.init=prob.target;
+prob.target=[pi/3,pi/3,-pi/4,0,-pi/3,0];% joint space target position
+disp(['Initial pos [',num2str(prob.init),']']);
+disp(['Target pos [',num2str(prob.target),']']);
+tmp=input('Press any key to run ');
+prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
+prob.time = 0:prob.dt:prob.tf;
+% generate initial motion
+ps.sGuess=nan(length(prob.time),ps.nS);
+sAcc=nan(length(prob.time),ps.nS/2);
+prob.u_init=nan(length(prob.time),ps.nU);
+for i=1:ps.nS/2
+    [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
+    ps.sGuess(:,i) = pos(:);
+    ps.sGuess(:,6+i) = vel(:);
+    sAcc(:,i) = acc(:);
+end
+for j=1:size(sAcc,1)
+    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+end
+[prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.target,prob.rob);
+% solve optimal control
+[opt.Xc,opt.Uc,opt.Tc,opt.Xopt,opt.Uopt,opt.Topt] = ...
+    ps.timeOptimalOptimize(prob.lb,prob.ub,prob.time,prob.u_init);
+% animation
+figure(1);clf;
+prob.rob.InitPlot([150,30]);
+for j=1:5:length(opt.Topt)
+    prob.rob.draw(opt.Xopt(j,1:6));
+    pause(0.02);
+end
+% record data
+state_record = [state_record;opt.Xopt];
+control_record = [control_record;opt.Uopt];
+if isempty(time_record)
+    time_record = [time_record;opt.Topt(:)];
+else
+    time_record = [time_record;opt.Topt(:)+time_record(end)+prob.dt];
+end
+%% task 3
+% pause(1);
+R=[1 0 0;0 0 -1; 0 1 0]*rotx(pi/2)*rotz(-pi/6);
+P=[0.5;0.2;1.3];
+prob.init=prob.target;
+prob.target=prob.rob.kinv_M20iA(R,P);
+disp(['Initial pos [',num2str(prob.init),']']);
+disp(['Target pos [',num2str(prob.target),']']);
+tmp=input('Press any key to run ');
+prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
+prob.time = 0:prob.dt:prob.tf;
+% generate initial motion
+ps.sGuess=nan(length(prob.time),ps.nS);
+sAcc=nan(length(prob.time),ps.nS/2);
+prob.u_init=nan(length(prob.time),ps.nU);
+for i=1:ps.nS/2
+    [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
+    ps.sGuess(:,i) = pos(:);
+    ps.sGuess(:,6+i) = vel(:);
+    sAcc(:,i) = acc(:);
+end
+for j=1:size(sAcc,1)
+    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+end
+[prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.target,prob.rob);
+% solve optimal control
+[opt.Xc,opt.Uc,opt.Tc,opt.Xopt,opt.Uopt,opt.Topt] = ...
+    ps.timeOptimalOptimize(prob.lb,prob.ub,prob.time,prob.u_init);
+% animation
+figure(1);clf;
+prob.rob.InitPlot([150,30]);
+for j=1:5:length(opt.Topt)
+    prob.rob.draw(opt.Xopt(j,1:6));
+    pause(0.02);
+end
+% record data
+state_record = [state_record;opt.Xopt];
+control_record = [control_record;opt.Uopt];
+if isempty(time_record)
+    time_record = [time_record;opt.Topt(:)];
+else
+    time_record = [time_record;opt.Topt(:)+time_record(end)+prob.dt];
+end
+%% task 4
+% pause(1);
+R=[0 1 0;0 0 -1;-1 0 0];
+P=[-0.5;0.8;0.4];
+prob.init=prob.target;
+prob.target=prob.rob.kinv_M20iA(R,P);
+disp(['Initial pos [',num2str(prob.init),']']);
+disp(['Target pos [',num2str(prob.target),']']);
+tmp=input('Press any key to run ');
+prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
+prob.time = 0:prob.dt:prob.tf;
+% generate initial motion
+ps.sGuess=nan(length(prob.time),ps.nS);
+sAcc=nan(length(prob.time),ps.nS/2);
+prob.u_init=nan(length(prob.time),ps.nU);
+for i=1:ps.nS/2
+    [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
+    ps.sGuess(:,i) = pos(:);
+    ps.sGuess(:,6+i) = vel(:);
+    sAcc(:,i) = acc(:);
+end
+for j=1:size(sAcc,1)
+    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+end
+[prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.target,prob.rob);
+% solve optimal control
+[opt.Xc,opt.Uc,opt.Tc,opt.Xopt,opt.Uopt,opt.Topt] = ...
+    ps.timeOptimalOptimize(prob.lb,prob.ub,prob.time,prob.u_init);
+% animation
+figure(1);clf;
+prob.rob.InitPlot([150,30]);
+for j=1:5:length(opt.Topt)
+    prob.rob.draw(opt.Xopt(j,1:6));
+    pause(0.02);
+end
+% record data
+state_record = [state_record;opt.Xopt];
+control_record = [control_record;opt.Uopt];
+if isempty(time_record)
+    time_record = [time_record;opt.Topt(:)];
+else
+    time_record = [time_record;opt.Topt(:)+time_record(end)+prob.dt];
+end
+%% task 5
+% pause(1);
+R=[1 0 0;0 0 -1; 0 1 0]*rotx(pi/2)*rotz(-pi/6);
+P=[0.5;0.2;1.3];
+prob.init=prob.target;
+prob.target=prob.rob.kinv_M20iA(R,P);
+disp(['Initial pos [',num2str(prob.init),']']);
+disp(['Target pos [',num2str(prob.target),']']);
+tmp=input('Press any key to run ');
+prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
+prob.time = 0:prob.dt:prob.tf;
+% generate initial motion
+ps.sGuess=nan(length(prob.time),ps.nS);
+sAcc=nan(length(prob.time),ps.nS/2);
+prob.u_init=nan(length(prob.time),ps.nU);
+for i=1:ps.nS/2
+    [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
+    ps.sGuess(:,i) = pos(:);
+    ps.sGuess(:,6+i) = vel(:);
+    sAcc(:,i) = acc(:);
+end
+for j=1:size(sAcc,1)
+    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+end
+[prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.target,prob.rob);
+% solve optimal control
+[opt.Xc,opt.Uc,opt.Tc,opt.Xopt,opt.Uopt,opt.Topt] = ...
+    ps.timeOptimalOptimize(prob.lb,prob.ub,prob.time,prob.u_init);
+% animation
+figure(1);clf;
+prob.rob.InitPlot([150,30]);
+for j=1:5:length(opt.Topt)
+    prob.rob.draw(opt.Xopt(j,1:6));
+    pause(0.02);
+end
+% record data
+state_record = [state_record;opt.Xopt];
+control_record = [control_record;opt.Uopt];
+if isempty(time_record)
+    time_record = [time_record;opt.Topt(:)];
+else
+    time_record = [time_record;opt.Topt(:)+time_record(end)+prob.dt];
+end
+%% task 6
+% pause(1);
+R=[1 0 0;0 0 -1; 0 1 0]*rotx(pi/2);
+P=[1.2;0.5;1.3];
+prob.init=prob.target;
+prob.target=prob.rob.kinv_M20iA(R,P);
+disp(['Initial pos [',num2str(prob.init),']']);
+disp(['Target pos [',num2str(prob.target),']']);
+tmp=input('Press any key to run ');
+prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
+prob.time = 0:prob.dt:prob.tf;
+% generate initial motion
+ps.sGuess=nan(length(prob.time),ps.nS);
+sAcc=nan(length(prob.time),ps.nS/2);
+prob.u_init=nan(length(prob.time),ps.nU);
+for i=1:ps.nS/2
+    [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
+    ps.sGuess(:,i) = pos(:);
+    ps.sGuess(:,6+i) = vel(:);
+    sAcc(:,i) = acc(:);
+end
+for j=1:size(sAcc,1)
+    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+end
+[prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.target,prob.rob);
+% solve optimal control
+[opt.Xc,opt.Uc,opt.Tc,opt.Xopt,opt.Uopt,opt.Topt] = ...
+    ps.timeOptimalOptimize(prob.lb,prob.ub,prob.time,prob.u_init);
+% animation
+figure(1);clf;
+prob.rob.InitPlot([150,30]);
+for j=1:5:length(opt.Topt)
+    prob.rob.draw(opt.Xopt(j,1:6));
+    pause(0.02);
+end
+% record data
+state_record = [state_record;opt.Xopt];
+control_record = [control_record;opt.Uopt];
+if isempty(time_record)
+    time_record = [time_record;opt.Topt(:)];
+else
+    time_record = [time_record;opt.Topt(:)+time_record(end)+prob.dt];
+end
+
+%% plot recorded results
+% plot result
+for j=1:6
+    ratioVel(:,j)=state_record(:,6+j)/velbnd(j);
+    ratioTrq(:,j)=control_record(:,j)/trqbnd(j);
+    dtrq(:,j)=gradient(control_record(:,j))./gradient(time_record(:));
+    ratioDtrq(:,j)=dtrq(:,j)/dtrqbnd(j);
+end
+figure(2);
+clf;
+subplot(3,1,1);
+plot(time_record,ratioVel,'linewidth',2);
+grid on;xlim([time_record(1),time_record(end)]);
+ylim([-1,1]);
+title('Velocity/Vm');
+xlabel('time [s]');ylabel('vel ratio');
+subplot(3,1,2);
+plot(time_record,ratioTrq,'linewidth',2);
+grid on;xlim([time_record(1),time_record(end)]);
+ylim([-1,1]);
+title('Torque/Tm');
+xlabel('time [s]');ylabel('trq ratio');
+subplot(3,1,3);
+plot(time_record,ratioDtrq,'linewidth',2);
+ylim([-1,1]);
+grid on;xlim([time_record(1),time_record(end)]);
+title('Torque rate/dTm');
+xlabel('time [s]');ylabel('trq rate ratio');

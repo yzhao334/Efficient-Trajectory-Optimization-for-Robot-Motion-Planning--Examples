@@ -21,6 +21,7 @@
 % changed.
 clear all;clc;close all;
 addpath(genpath('./Core'));
+addpath(genpath('Examples/FromARTE'));
 message = {"Available demos:",...
    sprintf('\t[0] 2D scara robot, time optimal under kinematic constraints'),...
    sprintf('\t[1] 2D scara robot, time optimal under obstacle and kinematic constraints'),...
@@ -73,14 +74,11 @@ switch choice
     case 4
         disp("Your choice is: "+string(message{choice+2}(2:end)));
         disp("  ");
-        tmp=input('Press any key to start ');
+        regul=input('Using regulation? [y/n] ','s');
         disp("  ");
-        addpath(genpath('Examples/FromARTE'));
         addpath('Examples/M20-dyn-simple');
         run('demo_M20dyn.m');
         rmpath('Examples/M20-dyn-simple');
-        rmpath(genpath('Examples/FromARTE'));
     otherwise
         disp("Invalid choice. Please try again.");
 end
-rmpath(genpath('./Core'));

@@ -1,6 +1,7 @@
 function [Rs, v_Ct, a_Ct, t_end] = SPathGenOrder3(tLen, dt, pauseT)
 % third order time optimal offline trjgen
 % with manually chosen shape.
+% author: Yu Zhao, yzhao334@berkeley.edu
 
 %  Rs : Generated vector of path primitive (s), the length along the path
 %  v_Ct: Generated vector of the velocity along the path
