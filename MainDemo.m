@@ -8,7 +8,10 @@
 % manipulators considering kinematic constraints using probabilistic 
 % roadmap approach." Xiaowen Yu etc., 2017, or "Intelligent Control and 
 % Planning for Industrial Robots." Yu Zhao, 2018.
-% [4] 3D robot demo ...
+% [4] 6-axis robot, time optimal under dynamic constraints. Robot velocity,
+% torque and torque rate are considered. Articulated body algorithm (ABA)
+% is implemented to calculate robot forward dynamics, which is used as
+% dynamic constraints of optimal control problem.
 
 % optimal control based trajectory planning.
 %   In this example, 3d 6-joint robot dynamics is considered, with

@@ -1,17 +1,15 @@
 function [ ret ] = conIneq( Xc,Uc,D,scale,prob )
 % inequality constraint
-nS = 12;
+nS = 18;
 nU = 6;
 npts = numel(Xc)/nS;
 Xc = reshape(Xc,nS,npts);
 Uc = reshape(Uc,nU,npts);
-Acc = (D*(Xc(7:12,:).')/scale).';
+Acc = Xc(13:18,:);
 Jerk = (D*(Acc.')/scale).';
-Ucd = (D*(Uc.')/scale).';
 % pos, velocity, torque constraints, considering motor feedforward
 temp = [Xc;...
-    Uc;...
-    Ucd];
+    Uc];
 
 
 ret = [temp(:);...

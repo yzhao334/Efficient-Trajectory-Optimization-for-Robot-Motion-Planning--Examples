@@ -20,7 +20,7 @@ Run MainDemo.m and follow instructions.
 
 * [3] 2D wafer handling robot, obscatle avoidance with kinematics constraints, description refer to "Trajectory planning for robot manipulators considering kinematic constraints using probabilistic roadmap approach." Xiaowen Yu etc., 2017, or "Intelligent Control and Planning for Industrial Robots." Yu Zhao, 2018.
 
-* In regards of 6-axis robot cases, using FANUC M20iA model from [ARTE](http://arvc.umh.es/arte/index_en.html). Implementation includes  visualization, forward and inverse kinematics, inverse dynamics (recursive Newton Euler method, or rNE), and forward dynamics (articulated body algorithm, or ABA) for planning calculation.
+* In regards of 6-axis robot cases, using FANUC M20iA model from [ARTE](http://arvc.umh.es/arte/index_en.html). Implementation includes  visualization, forward and inverse kinematics, inverse dynamics (recursive Newton Euler method, or rNE), and forward dynamics (articulated body algorithm, or ABA) for planning calculation. Some parameters have been modified from ARTE (zero offset, joint limit)
 
 * [4] 6-axis robot, time optimal control under dynamic constraints (velocity bound, torque bound, and torque rate bound). Can choose whether using regularization term in cost function or not. If not, running 'pure' time optimal control result, which runs slower and returns motion a little bit wired to human.
 

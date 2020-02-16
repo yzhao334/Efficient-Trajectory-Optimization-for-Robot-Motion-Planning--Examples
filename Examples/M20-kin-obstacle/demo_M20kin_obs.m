@@ -19,7 +19,7 @@ prob.rob = RobViz('M20iA');
 %% initialize optimization
 ps=PseudoOptimal;
 ps.npts=12;
-ps.nS=12;
+ps.nS=18;
 ps.nU=6;
 maxiter=500;dispLev=5;
 switch regul
@@ -72,13 +72,13 @@ prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
-sAcc=nan(length(prob.time),ps.nS/2);
 prob.u_init=nan(length(prob.time),ps.nU);
-for i=1:ps.nS/2
+for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    sAcc(:,i) = acc(:);
+    ps.sGuess(:,7+i) = acc(:);
+    prob.u_init(:,i) = gradient(
 end
 for j=1:size(sAcc,1)
     prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));

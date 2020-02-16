@@ -9,17 +9,17 @@ possup=rob.r.Qlim(2,:).';
 
 velbnd=rob.r.QDlim(2,:).';
 
-trqbnd=0.8*[1396.5,1402.3,382.7,45.2,44.6,32.5].';
-dtrqbnd=30*trqbnd;
+accbnd=6*velbnd;
+jerkbnd=6*accbnd;
 
-bnds = [posinf,possup,velbnd,trqbnd,dtrqbnd];
+bnds = [posinf,possup,velbnd,accbnd,jerkbnd];
 
 limit=1;% of limit of every bound
 interpLimit=0.8; % for test case
 % interpLimit=0.68;% considering interpolation using 20 pnts, addition limit
 % interpLimit=0.7;% considering interpolation using 12 pnts, addition limit
-conlb = -[-posinf;velbnd;trqbnd;dtrqbnd]*limit*interpLimit;
-conub =  [ possup;velbnd;trqbnd;dtrqbnd]*limit*interpLimit;
+conlb = -[-posinf;velbnd;accbnd;jerkbnd]*limit*interpLimit;
+conub =  [ possup;velbnd;accbnd;jerkbnd]*limit*interpLimit;
 
 tlimit = 100;
 lb = [kron(ones(npts,1),conlb);...

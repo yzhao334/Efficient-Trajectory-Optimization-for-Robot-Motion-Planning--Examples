@@ -6,6 +6,7 @@ classdef RobotObj < handle
     properties
         ModelName; % model name of of robot
         r;  % struct contains robot parameters
+        bnd_ball;
     end
     
     methods
@@ -55,8 +56,8 @@ classdef RobotObj < handle
             obj.r.D       = [0.525 0 0 0.835 0 0.100];                                  % Joint extension (m)
             obj.r.A       = [0.150 0.790 0.250 0 0 0];                                  % Joint offset (m)
             obj.r.Alpha   = [-pi/2 0 -pi/2 pi/2 -pi/2 0];                               % Joint twist (rad)
-            obj.r.Qlim    = [-185 185; -130 130; -229 229; ...
-                        -200 200; -180 180; -450 450]'*pi/180;                      % Joint angle limit (rad)
+            obj.r.Qlim    = [-185 185; -100 110; -229 229; ...
+                        -200 200; -180 180; -450 450]'*pi/180; % modified jnt angle limit of jnt2                     % Joint angle limit (rad)
             obj.r.QDlim   = [-195 195; -175 175; -180 180; ...
                         -360 360; -360 360; -550 550]'*pi/180;
                     
@@ -92,7 +93,39 @@ classdef RobotObj < handle
             % some common poses
             obj.r.qz  = [0 0 0 0 0 0];         % zero angles, L shaped pose
             obj.r.qh  = [0 0 0 0 0 0];         % home pose
-
+            
+            % setup bounding balls for collision detection
+            obj.bnd_ball.c{1}=[0 0 0.1];
+            obj.bnd_ball.r{1}=0.26;
+            
+            obj.bnd_ball.c{2}=[-0.1,0.08,0.034];
+            obj.bnd_ball.r{2}=0.29;
+            
+            obj.bnd_ball.c{3}(1,:)=[-0.06,0,-0.17];
+            obj.bnd_ball.r{3}(1)=0.17;
+            obj.bnd_ball.c{3}(2,:)=[-0.33,0,-0.19];
+            obj.bnd_ball.r{3}(2)=0.16;
+            obj.bnd_ball.c{3}(3,:)=[-0.59,0,-0.16];
+            obj.bnd_ball.r{3}(3)=0.16;
+            obj.bnd_ball.c{3}(4,:)=[-0.8,0,-0.16];
+            obj.bnd_ball.r{3}(4)=0.16;
+            
+            obj.bnd_ball.c{4}(1,:)=[0,0,0.11];
+            obj.bnd_ball.r{4}(1)=0.15;
+            obj.bnd_ball.c{4}(2,:)=[-0.23,-0.01,0.07];
+            obj.bnd_ball.r{4}(2)=0.22;
+            
+            obj.bnd_ball.c{5}(1,:)=[0,-0.47,0];
+            obj.bnd_ball.r{5}(1)=0.15;
+            obj.bnd_ball.c{5}(2,:)=[0,-0.26,-0.05];
+            obj.bnd_ball.r{5}(2)=0.15;
+            obj.bnd_ball.c{5}(3,:)=[0,-0.025,-0.04];
+            obj.bnd_ball.r{5}(3)=0.16;
+            
+            obj.bnd_ball.c{6}=[];
+            obj.bnd_ball.r{6}=[];
+            obj.bnd_ball.c{7}=[];
+            obj.bnd_ball.r{7}=[];
         end 
         
         % analytical inverse kinematics of M20iA
