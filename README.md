@@ -24,7 +24,13 @@ Run MainDemo.m and follow instructions.
 
 * [4] 6-axis robot, time optimal control under dynamic constraints (velocity bound, torque bound, and torque rate bound). Can choose whether using regularization term in cost function or not. If not, running 'pure' time optimal control result, which runs slower and returns motion a little bit wired to human.
 
+* [5] 6-axis robot, time optimal control under dynamic constraints as [4] and obstacle avoidance constraints. Can choose whether using regularization term in cost function or not. Can choose whether to visualize boudning balls of robot links.
+
+* [6] 6-axis robot, time optimal control under kinematic constraints (position, velocity, acceleration, jerk) and obstacle avoidance constraints. Can choose whether to visualize bounding balls of robot links.
+
 Besides, a quadrotor demo can be found in [another git repo](https://github.com/yzhao334/Flipping-Test.git)
+
+These examples demonstrate the work shown in "Efficient trajectory optimization for robot motion planning." (2018).
 
 ### Videos
 
