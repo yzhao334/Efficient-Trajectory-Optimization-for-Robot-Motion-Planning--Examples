@@ -12,6 +12,12 @@
 % torque and torque rate are considered. Articulated body algorithm (ABA)
 % is implemented to calculate robot forward dynamics, which is used as
 % dynamic constraints of optimal control problem.
+% [5] 6-axis robot, time optimal under dynamic constraints. Robot
+% velocity, torque and torque rate are considered. Obstacle avoidance is
+% considered. Robot links are constrained to be above ground.
+% [6] 6-axis robot, time optimal under kinematic constraints and obstacle
+% avoidance constraints. Robot position, velocity, acceleration, and jerk
+% are bounded. Robot links are constrained to be above ground.
 
 % optimal control based trajectory planning.
 %   In this example, 3d 6-joint robot dynamics is considered, with
@@ -31,6 +37,8 @@ message = {"Available demos:",...
    sprintf('\t[2] 2D scara robot, time optimal under obstacle and dynamic constraints'),...
    sprintf('\t[3] 2D wafer handling robot, time optimal under obstacle and kinematic constraints')...
    sprintf('\t[4] 6-axis robot, time optimal under dynamic constraints')...
+   sprintf('\t[5] 6-axis robot, time optimal under dynamic constraints and obstacle avoidance')...
+   sprintf('\t[6] 6-axis robot, time optimal under kinematic constraints and obstacle avoidance')...
    sprintf('Please choose one:  '),...
    };
 for i = 1:length(message)
@@ -82,6 +90,24 @@ switch choice
         addpath('Examples/M20-dyn-simple');
         run('demo_M20dyn.m');
         rmpath('Examples/M20-dyn-simple');
+    case 5
+        disp("Your choice is: "+string(message{choice+2}(2:end)));
+        disp("  ");
+        regul=input('Using regulation? [y/n] ','s');
+        disp("  ");
+        showbndball=input('Show robot bounding ball? [y/n] ','s');
+        disp("  ");
+        addpath('Examples/M20-dyn-obstacle');
+        run('demo_M20dyn_obs.m');
+        rmpath('Examples/M20-dyn-obstacle');
+    case 6
+        disp("Your choice is: "+string(message{choice+2}(2:end)));
+        disp("  ");
+        showbndball=input('Show robot bounding ball? [y/n] ','s');
+        disp("  ");
+        addpath('Examples/M20-kin-obstacle');
+        run('demo_M20kin_obs.m');
+        rmpath('Examples/M20-kin-obstacle');
     otherwise
         disp("Invalid choice. Please try again.");
 end

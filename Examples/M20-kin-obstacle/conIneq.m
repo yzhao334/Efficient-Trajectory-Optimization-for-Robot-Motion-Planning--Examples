@@ -6,7 +6,7 @@ npts = numel(Xc)/nS;
 Xc = reshape(Xc,nS,npts);
 Uc = reshape(Uc,nU,npts);
 Acc = Xc(13:18,:);
-Jerk = (D*(Acc.')/scale).';
+% Jerk = (D*(Acc.')/scale).';
 % pos, velocity, torque constraints, considering motor feedforward
 temp = [Xc;...
     Uc];
@@ -16,11 +16,9 @@ ret = [temp(:);...
     Xc(1:6,1);...
     Xc(7:12,1);...
     Acc(:,1);...
-    Jerk(:,1);...
     prob.rob.tcpPos(Xc(1:6,end));...
     Xc(7:12,end);...
     Acc(:,end);...
-    Jerk(:,end);...
     scale*2];
 
 selfcoli=[];
@@ -33,7 +31,11 @@ for i=1:npts
     prob.rob.jnt_pos=Xc(1:6,i);
     [jntT]=prob.rob.kfwd_rob_full();
     for j=[1,2,3,4,5]
-        temp=jntT{j}*[prob.c{j}.';ones(1,length(prob.r{j}))];
+        if isa(prob.rob.jnt_pos,'casadi.SX')
+            temp=jntT{j}*[prob.c{j}.';ones(1,length(prob.r{j}))];
+        else
+            temp=jntT(:,:,j)*[prob.c{j}.';ones(1,length(prob.r{j}))];
+        end
         c{j}=temp(1:3,:).';
     end
     

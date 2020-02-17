@@ -18,23 +18,13 @@ prob.rob = RobViz('M20iA');
     boundBall(prob);
 %% initialize optimization
 ps=PseudoOptimal;
-ps.npts=12;
+ps.npts=17;
 ps.nS=18;
 ps.nU=6;
 maxiter=500;dispLev=5;
-switch regul
-    case 'y'
-        ps=ps.timeOptimalInit(@(Xc,Uc,D,nS,nU,scale,P)conEq(Xc,Uc,D,nS,nU,scale,P,prob.rob),...
-        @(Xc,Uc,tc,D,nS,nU,ww,scale)costFcn(Xc,Uc,tc,D,nS,nU,ww,scale,prob.rob),...
-        @(Xc,Uc,D,scale)conIneq(Xc,Uc,D,scale,prob),maxiter,dispLev);
-    case 'n'
-        ps=ps.timeOptimalInit(@(Xc,Uc,D,nS,nU,scale,P)conEq(Xc,Uc,D,nS,nU,scale,P,prob.rob),...
-        @(Xc,Uc,tc,D,nS,nU,ww,scale)costFcn_topt(Xc,Uc,tc,D,nS,nU,ww,scale,prob.rob),...
-        @(Xc,Uc,D,scale)conIneq(Xc,Uc,D,scale,prob),maxiter,dispLev);
-    otherwise
-        disp('Wrong option. Please try again');
-        return;
-end
+ps=ps.timeOptimalInit(@(Xc,Uc,D,nS,nU,scale,P)conEq(Xc,Uc,D,nS,nU,scale,P,prob.rob),...
+@(Xc,Uc,tc,D,nS,nU,ww,scale)costFcn_topt(Xc,Uc,tc,D,nS,nU,ww,scale,prob.rob),...
+@(Xc,Uc,D,scale)conIneq(Xc,Uc,D,scale,prob),maxiter,dispLev);
 switch showbndball
     case 'y'
         robinitplotplus=@()prob.rob.initBndBallPlot();
@@ -50,13 +40,14 @@ disp('Initialization finished.');
 disp('  ');
 %% set up series of trials
 % initial setup
+showdt=0.02;
 prob.tf=0.96;
 prob.dt=0.01;
 prob.time = 0:prob.dt:prob.tf;
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,zeros(1,6),zeros(1,6),prob);
 velbnd=prob.bnds(:,3);
-trqbnd=prob.bnds(:,4);
-dtrqbnd=prob.bnds(:,5);
+accbnd=prob.bnds(:,4);
+jerkbnd=prob.bnds(:,5);
 rotx=@(x)[1,0,0;0,cos(x),sin(x);0,-sin(x),cos(x)].';
 rotz=@(x)[cos(x),sin(x),0;-sin(x),cos(x),0;0,0,1].';
 roty=@(x)[cos(x),0,-sin(x);0,1,0;sin(x),0,cos(x)].';
@@ -77,11 +68,8 @@ for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    ps.sGuess(:,7+i) = acc(:);
-    prob.u_init(:,i) = gradient(
-end
-for j=1:size(sAcc,1)
-    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+    ps.sGuess(:,12+i) = acc(:);
+    prob.u_init(:,i) = gradient(acc(:))./gradient(prob.time(:));
 end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.targetPos,prob);
 % solve optimal control
@@ -96,7 +84,7 @@ plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
 pause(0.01);
 for j=1:5:length(opt.Topt)
     robdrawfcn(opt.Xopt(j,1:6));
-    pause(0.02);
+    pause(showdt);
 end
 % record data
 state_record = [state_record;opt.Xopt];
@@ -118,16 +106,13 @@ prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
-sAcc=nan(length(prob.time),ps.nS/2);
 prob.u_init=nan(length(prob.time),ps.nU);
-for i=1:ps.nS/2
+for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    sAcc(:,i) = acc(:);
-end
-for j=1:size(sAcc,1)
-    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+    ps.sGuess(:,12+i) = acc(:);
+    prob.u_init(:,i) = gradient(acc(:))./gradient(prob.time(:));
 end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.targetPos,prob);
 % solve optimal control
@@ -138,11 +123,11 @@ figure(1);clf;
 prob.rob.jnt_pos=prob.init;
 prob.rob.InitPlot([150,30]);
 robinitplotplus();
-hs=plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
+plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
 pause(0.01);
 for j=1:5:length(opt.Topt)
     robdrawfcn(opt.Xopt(j,1:6));
-    pause(0.02);
+    pause(showdt);
 end
 % record data
 state_record = [state_record;opt.Xopt];
@@ -166,16 +151,13 @@ prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
-sAcc=nan(length(prob.time),ps.nS/2);
 prob.u_init=nan(length(prob.time),ps.nU);
-for i=1:ps.nS/2
+for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    sAcc(:,i) = acc(:);
-end
-for j=1:size(sAcc,1)
-    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+    ps.sGuess(:,12+i) = acc(:);
+    prob.u_init(:,i) = gradient(acc(:))./gradient(prob.time(:));
 end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.targetPos,prob);
 % solve optimal control
@@ -186,11 +168,11 @@ figure(1);clf;
 prob.rob.jnt_pos=prob.init;
 prob.rob.InitPlot([150,30]);
 robinitplotplus();
-hs=plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
+plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
 pause(0.01);
 for j=1:5:length(opt.Topt)
     robdrawfcn(opt.Xopt(j,1:6));
-    pause(0.02);
+    pause(showdt);
 end
 % record data
 state_record = [state_record;opt.Xopt];
@@ -214,16 +196,13 @@ prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
-sAcc=nan(length(prob.time),ps.nS/2);
 prob.u_init=nan(length(prob.time),ps.nU);
-for i=1:ps.nS/2
+for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    sAcc(:,i) = acc(:);
-end
-for j=1:size(sAcc,1)
-    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+    ps.sGuess(:,12+i) = acc(:);
+    prob.u_init(:,i) = gradient(acc(:))./gradient(prob.time(:));
 end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.targetPos,prob);
 % solve optimal control
@@ -234,11 +213,11 @@ figure(1);clf;
 prob.rob.jnt_pos=prob.init;
 prob.rob.InitPlot([150,30]);
 robinitplotplus();
-hs=plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
+plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
 pause(0.01);
 for j=1:5:length(opt.Topt)
     robdrawfcn(opt.Xopt(j,1:6));
-    pause(0.02);
+    pause(showdt);
 end
 % record data
 state_record = [state_record;opt.Xopt];
@@ -262,16 +241,13 @@ prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
-sAcc=nan(length(prob.time),ps.nS/2);
 prob.u_init=nan(length(prob.time),ps.nU);
-for i=1:ps.nS/2
+for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    sAcc(:,i) = acc(:);
-end
-for j=1:size(sAcc,1)
-    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+    ps.sGuess(:,12+i) = acc(:);
+    prob.u_init(:,i) = gradient(acc(:))./gradient(prob.time(:));
 end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.targetPos,prob);
 % solve optimal control
@@ -282,11 +258,11 @@ figure(1);clf;
 prob.rob.jnt_pos=prob.init;
 prob.rob.InitPlot([150,30]);
 robinitplotplus();
-hs=plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
+plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
 pause(0.01);
 for j=1:5:length(opt.Topt)
     robdrawfcn(opt.Xopt(j,1:6));
-    pause(0.02);
+    pause(showdt);
 end
 % record data
 state_record = [state_record;opt.Xopt];
@@ -310,16 +286,13 @@ prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
-sAcc=nan(length(prob.time),ps.nS/2);
 prob.u_init=nan(length(prob.time),ps.nU);
-for i=1:ps.nS/2
+for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    sAcc(:,i) = acc(:);
-end
-for j=1:size(sAcc,1)
-    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+    ps.sGuess(:,12+i) = acc(:);
+    prob.u_init(:,i) = gradient(acc(:))./gradient(prob.time(:));
 end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.targetPos,prob);
 % solve optimal control
@@ -330,11 +303,11 @@ figure(1);clf;
 prob.rob.jnt_pos=prob.init;
 prob.rob.InitPlot([150,30]);
 robinitplotplus();
-hs=plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
+plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
 pause(0.01);
 for j=1:5:length(opt.Topt)
     robdrawfcn(opt.Xopt(j,1:6));
-    pause(0.02);
+    pause(showdt);
 end
 % record data
 state_record = [state_record;opt.Xopt];
@@ -358,16 +331,13 @@ prob.tf=20*max(abs(prob.target(:)-prob.init(:))./velbnd(:));
 prob.time = 0:prob.dt:prob.tf;
 % generate initial motion
 ps.sGuess=nan(length(prob.time),ps.nS);
-sAcc=nan(length(prob.time),ps.nS/2);
 prob.u_init=nan(length(prob.time),ps.nU);
-for i=1:ps.nS/2
+for i=1:6
     [pos,vel,acc] = motiongen(prob.init(i),prob.target(i),prob.dt,prob.tf);
     ps.sGuess(:,i) = pos(:);
     ps.sGuess(:,6+i) = vel(:);
-    sAcc(:,i) = acc(:);
-end
-for j=1:size(sAcc,1)
-    prob.u_init(j,:)=prob.rob.rne_s(ps.sGuess(j,1:6),ps.sGuess(j,7:12),sAcc(j,:));
+    ps.sGuess(:,12+i) = acc(:);
+    prob.u_init(:,i) = gradient(acc(:))./gradient(prob.time(:));
 end
 [prob.lb,prob.ub,prob.bnds]=bounds(ps.npts,prob.init,prob.targetPos,prob);
 % solve optimal control
@@ -378,11 +348,11 @@ figure(1);clf;
 prob.rob.jnt_pos=prob.init;
 prob.rob.InitPlot([150,30]);
 robinitplotplus();
-hs=plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
+plotBalls(prob.obs.c,prob.obs.r,[0.7,0.7,0.7]);
 pause(0.01);
 for j=1:5:length(opt.Topt)
     robdrawfcn(opt.Xopt(j,1:6));
-    pause(0.02);
+    pause(showdt);
 end
 % record data
 state_record = [state_record;opt.Xopt];
@@ -397,9 +367,8 @@ end
 % plot result
 for j=1:6
     ratioVel(:,j)=state_record(:,6+j)/velbnd(j);
-    ratioTrq(:,j)=control_record(:,j)/trqbnd(j);
-    dtrq(:,j)=gradient(control_record(:,j))./gradient(time_record(:));
-    ratioDtrq(:,j)=dtrq(:,j)/dtrqbnd(j);
+    ratioAcc(:,j)=state_record(:,12+j)/accbnd(j);
+    ratioJerk(:,j)=control_record(:,j)/jerkbnd(j);
 end
 figure(2);
 clf;
@@ -410,14 +379,14 @@ ylim([-1,1]);
 title('Velocity/Vm');
 xlabel('time [s]');ylabel('vel ratio');
 subplot(3,1,2);
-plot(time_record,ratioTrq,'linewidth',2);
+plot(time_record,ratioAcc,'linewidth',2);
 grid on;xlim([time_record(1),time_record(end)]);
 ylim([-1,1]);
-title('Torque/Tm');
-xlabel('time [s]');ylabel('trq ratio');
+title('Acceleration/Am');
+xlabel('time [s]');ylabel('acc ratio');
 subplot(3,1,3);
-plot(time_record,ratioDtrq,'linewidth',2);
+plot(time_record,ratioJerk,'linewidth',2);
 ylim([-1,1]);
 grid on;xlim([time_record(1),time_record(end)]);
-title('Torque rate/dTm');
-xlabel('time [s]');ylabel('trq rate ratio');
+title('Jerk/Jm');
+xlabel('time [s]');ylabel('jerk ratio');
